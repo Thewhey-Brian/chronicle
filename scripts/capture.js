@@ -60,6 +60,8 @@ async function reset(page) {
     document
       .querySelectorAll('[data-expanded="true"]')
       .forEach((el) => el.setAttribute("data-expanded", "false"));
+    // Close help overlay if open — otherwise it persists into subsequent captures
+    document.getElementById("help-overlay")?.setAttribute("data-open", "false");
     document.documentElement.setAttribute("data-theme", "dark");
     state.theme = "dark";
     if (state.headerFolded) {

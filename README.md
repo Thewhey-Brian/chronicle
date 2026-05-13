@@ -58,7 +58,7 @@ npx chronicle-cli export         # produces chronicle.html (single file)
 
 ### Three switchable views
 
-A segmented switcher in the header lets you flip between them — or use `R` / `G` / `S`.
+A segmented switcher in the header flips between them.
 
 ![View switcher](assets/screenshots/view-switcher.png)
 
