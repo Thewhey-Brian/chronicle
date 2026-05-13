@@ -56,23 +56,56 @@ npx chronicle-cli export         # produces chronicle.html (single file)
 
 ## What you get
 
-- **River view** — vertical scroll of memory cards, newest at top. Each card shows the prompt's intent, the impact (what changed), a GitHub-style diff, tag chips, and a tiny PROMPT → TOOLS → FILES → IMPACT flow diagram.
+### Three switchable views
 
-  ![Memory card with diff](assets/screenshots/diff.png)
+A segmented switcher in the header lets you flip between them — or use `R` / `G` / `S`.
 
-- **Sticky git tree** — horizontal session timeline with keyword labels on major moments, color-coded by tag, pivots drawn as forked arcs.
+![View switcher](assets/screenshots/view-switcher.png)
 
-  ![Git tree](assets/screenshots/git-tree.png)
+**River** — vertical scroll of memory cards, newest at top. Each card shows the prompt's intent, the impact, a GitHub-style diff, tag chips, and a tiny PROMPT → TOOLS → FILES → IMPACT flow diagram.
 
-- **Constellation graph** — `G` toggles a 2D plot: time on the y-axis, tag-cluster on the x-axis, edges between memories that share files. Side panel summarizes flow and counts.
+![River view](assets/screenshots/river.png)
 
-  ![Graph view](assets/screenshots/graph.png)
+**Graph** — constellation view: time on the y-axis, tag-cluster bands on the x-axis, chronological flow arrows, edges between memories that share files. Side panel surfaces the milestone flow and at-a-glance counts.
 
-- **Summary view** — `S` opens a hero dashboard: total counts, tag distribution donut, hour-of-day heatmap, top-touched files, cost-by-tier, keyword cloud, full-session timeline ribbon, tag-transition Sankey. Animated. Click anything to drill into the river.
+![Graph view](assets/screenshots/graph.png)
 
-  ![Summary dashboard](assets/screenshots/summary.png)
+**Summary** — full project dashboard: hero card with session title and vibe tags, count-up stat grid, tag-distribution donut, hour-of-day heatmap, top-touched files, cost-by-tier bars, keyword cloud, full-session timeline ribbon, and a tag-transition Sankey. Click any chart element to drill into a filtered river.
 
-- **Live cost ledger** — every LLM call Chronicle makes is logged. Footer shows live `$0.0XXX · N calls · M tokens`.
+![Summary top](assets/screenshots/summary.png)
+![Summary scrolled — keyword cloud + sankey](assets/screenshots/summary-cloud.png)
+
+### Specific features
+
+**Sticky horizontal git tree** with keyword labels above major moments, sequence/time mode toggle, zoom slider, and an inline color legend.
+
+![Sticky git tree](assets/screenshots/git-tree.png)
+
+**Tag color legend** — every active tag with its color swatch, count, and click-to-filter behavior.
+
+![Color legend](assets/screenshots/legend.png)
+
+**Sticky day banners** with disclosure caret, per-day color-coded sparkline, and per-day `+lines −lines` summary stats.
+
+![Day divider](assets/screenshots/day-divider.png)
+
+**GitHub-style diff** inline in every memory card, with lightweight syntax highlighting (JS/TS/Python/JSON/CSS/shell).
+
+![Diff renderer](assets/screenshots/diff.png)
+
+**Compact mode** — one toggle collapses both the header and the git tree into a slim sticky strip so the river can breathe.
+
+![Compact / folded mode](assets/screenshots/compact.png)
+
+**Paper theme** — warm off-white variant for screenshots, blog posts, or your eyes after dark.
+
+![Paper theme](assets/screenshots/paper.png)
+
+**Live cost ledger** — every LLM call Chronicle makes is logged. Heartbeat sparkline + summary "cost by tier" card show exactly where the budget went.
+
+**Keyboard help overlay** (`?`) — every shortcut at a glance.
+
+![Help overlay](assets/screenshots/help.png)
 
 ---
 

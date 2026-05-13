@@ -1,9 +1,9 @@
-// Renders the local chronicle.html in headless Chrome and captures the
-// PNGs / demo frames used by the README.
+// Renders the local chronicle.html in headless Chrome and captures all
+// the PNGs / demo frames used by the README. Showcases every view and
+// every major function.
 //
 // Usage:  node scripts/capture.js
-// Output: assets/screenshots/{river,git-tree,graph,summary,diff}.png
-//         assets/screenshots/demo.gif (assembled via ffmpeg from frames/)
+// Output: assets/screenshots/*.png  +  demo.gif
 
 import fs from "node:fs";
 import path from "node:path";
@@ -37,7 +37,7 @@ async function snap(page, name, { fullPage = false, clip = null } = {}) {
   if (clip) opts.clip = clip;
   await page.screenshot(opts);
   console.log(
-    `  ✓ ${name}.png (${fs.statSync(out).size.toLocaleString()} bytes)`,
+    `  ✓ ${name}.png (${(fs.statSync(out).size / 1024).toFixed(0)} KB)`,
   );
 }
 
@@ -47,16 +47,33 @@ async function settle(page, ms = 600) {
 
 async function pressKey(page, key) {
   await page.keyboard.press(key);
-  await settle(page, 800);
+  await settle(page, 700);
 }
 
-async function captureFrame(page, idx) {
-  const out = path.join(FRAMES, `f${String(idx).padStart(3, "0")}.png`);
-  await page.screenshot({ path: out, type: "png" });
+async function reset(page) {
+  // Reset to clean river state: top of page, no filter, no expanded cards
+  await page.evaluate(() => {
+    state.filter.tag = null;
+    state.filter.search = "";
+    document.getElementById("search").value = "";
+    state.collapsedDays = new Set();
+    document
+      .querySelectorAll('[data-expanded="true"]')
+      .forEach((el) => el.setAttribute("data-expanded", "false"));
+    document.documentElement.setAttribute("data-theme", "dark");
+    state.theme = "dark";
+    if (state.headerFolded) {
+      state.headerFolded = false;
+      applyFold();
+    }
+    setView("river");
+    window.scrollTo(0, 0);
+  });
+  await settle(page, 600);
 }
 
 async function main() {
-  console.log("Launching headless Chrome...");
+  console.log("Launching headless Chrome…");
   const browser = await puppeteer.launch({
     headless: "new",
     args: [
@@ -71,121 +88,301 @@ async function main() {
     await setViewport(page);
     console.log(`Loading ${HTML}`);
     await page.goto(HTML, { waitUntil: "networkidle0", timeout: 60_000 });
-    await settle(page, 1200);
+    await settle(page, 1400);
 
-    // === Static screenshots ===
-    console.log("Capturing river…");
+    // ----------------------------------------------------------------
+    // STATIC SCREENSHOTS — one per view / one per major feature
+    // ----------------------------------------------------------------
+    console.log("\n=== Static screenshots ===");
+
+    // 1. River — clean default state
+    await reset(page);
+    console.log("River view…");
     await snap(page, "river");
 
-    console.log("Capturing git-tree (cropped sticky header region)…");
-    // Crop the top ~520px which holds heartbeat + git tree + legend
-    await snap(page, "git-tree", {
-      clip: { x: 0, y: 0, width: W, height: 520 },
+    // 2. View switcher close-up (top-right of header)
+    console.log("View switcher close-up…");
+    await snap(page, "view-switcher", {
+      clip: { x: 800, y: 0, width: 600, height: 60 },
     });
 
-    console.log("Expanding first memory card for diff shot…");
+    // 3. Sticky git tree close-up
+    console.log("Git tree close-up…");
+    await snap(page, "git-tree", {
+      clip: { x: 0, y: 0, width: W, height: 320 },
+    });
+
+    // 4. Color legend close-up
+    console.log("Color legend close-up…");
+    await snap(page, "legend", {
+      clip: { x: 0, y: 250, width: W, height: 80 },
+    });
+
+    // 5. Day divider close-up — scroll to where the divider stands out
+    console.log("Day divider close-up…");
     await page.evaluate(() => {
+      const d = document.querySelector(".day-divider");
+      if (d) d.scrollIntoView({ block: "center" });
+    });
+    await settle(page, 500);
+    await snap(page, "day-divider", {
+      clip: { x: 200, y: 360, width: 1000, height: 100 },
+    });
+
+    // 6. Diff — expand a memory card with real changes
+    await reset(page);
+    console.log("Diff (expanded card)…");
+    await page.evaluate(() => {
+      // Find a card with substantial changes
       const cards = document.querySelectorAll(".memory");
-      if (cards[1]) cards[1].setAttribute("data-expanded", "true");
+      let target = null;
+      for (const c of cards) {
+        if (
+          c.querySelector(".change-badge .add") &&
+          c.getAttribute("data-weight") !== "trivial"
+        ) {
+          target = c;
+          break;
+        }
+      }
+      if (target) {
+        target.setAttribute("data-expanded", "true");
+        target.scrollIntoView({ block: "center" });
+      }
     });
-    await page.evaluate(() => {
-      const cards = document.querySelectorAll('.memory[data-expanded="true"]');
-      if (cards[0]) cards[0].scrollIntoView({ block: "center" });
-    });
-    await settle(page, 800);
-    console.log("Capturing diff…");
+    await settle(page, 900);
     await snap(page, "diff");
 
-    // Reset scroll, collapse expanded
-    await page.evaluate(() => {
-      window.scrollTo(0, 0);
-      document
-        .querySelectorAll('.memory[data-expanded="true"]')
-        .forEach((el) => el.setAttribute("data-expanded", "false"));
-    });
-    await settle(page);
-
-    console.log("Switching to graph view…");
+    // 7. Graph view
+    await reset(page);
+    console.log("Graph view…");
     await pressKey(page, "g");
     await settle(page, 1000);
-    console.log("Capturing graph…");
     await snap(page, "graph");
 
-    console.log("Switching to summary view…");
+    // 8. Summary view — top (hero + stats)
+    await reset(page);
+    console.log("Summary view (top)…");
     await pressKey(page, "s");
-    await settle(page, 1400); // wait for count-up + entrance anim
-    console.log("Capturing summary…");
+    await settle(page, 1500);
     await snap(page, "summary");
 
-    // === Demo recording (frames → GIF) ===
-    console.log("\nRecording demo frames…");
+    // 9. Summary scrolled — keyword cloud + sankey
+    console.log("Summary scrolled (cloud + sankey)…");
+    await page.evaluate(() => {
+      const cloud = document.querySelector(".cloud");
+      if (cloud) cloud.scrollIntoView({ block: "start" });
+      else window.scrollTo({ top: document.body.scrollHeight * 0.6 });
+    });
+    await settle(page, 700);
+    await snap(page, "summary-cloud");
+
+    // 10. Compact / folded mode
+    await reset(page);
+    console.log("Compact (folded) mode…");
+    await page.evaluate(() => {
+      state.headerFolded = true;
+      applyFold();
+    });
+    await settle(page, 600);
+    await snap(page, "compact", {
+      clip: { x: 0, y: 0, width: W, height: 220 },
+    });
+
+    // 11. Paper theme variant
+    await reset(page);
+    console.log("Paper theme…");
+    await pressKey(page, "t");
+    await settle(page, 500);
+    await snap(page, "paper");
+
+    // 12. Help overlay
+    await reset(page);
+    console.log("Help overlay…");
+    await pressKey(page, "?");
+    await settle(page, 600);
+    await snap(page, "help");
+
+    // ----------------------------------------------------------------
+    // DEMO GIF — comprehensive tour through every view & function
+    // ----------------------------------------------------------------
+    console.log("\n=== Recording demo frames ===");
     rmrf(FRAMES);
     fs.mkdirSync(FRAMES, { recursive: true });
+    await reset(page);
 
-    // Go back to river for the demo
-    await pressKey(page, "r");
-    await settle(page, 800);
-
-    // Capture sequence at ~5fps (200ms per frame)
     const FPS = 6;
     const INTERVAL_MS = Math.round(1000 / FPS);
     let frameIdx = 0;
 
+    async function recordFor(durationMs, action, label) {
+      console.log(`  • ${label}`);
+      if (action) await action();
+      const frames = Math.max(1, Math.round(durationMs / INTERVAL_MS));
+      for (let i = 0; i < frames; i++) {
+        const out = path.join(
+          FRAMES,
+          `f${String(frameIdx++).padStart(3, "0")}.png`,
+        );
+        await page.screenshot({ path: out, type: "png" });
+        await settle(page, INTERVAL_MS - 35);
+      }
+    }
+
+    // ------ Tour script ------
+    // (each entry: [duration ms, action fn or null, label])
     const SCRIPT = [
-      // [ms duration, action, label]
-      [1200, null, "linger on river"],
-      [800, async () => await page.mouse.wheel({ deltaY: 200 }), "scroll down"],
-      [800, async () => await page.mouse.wheel({ deltaY: 200 }), "scroll more"],
+      [1000, null, "linger on river (newest first)"],
+
+      // Show git tree + scroll
       [
-        600,
+        800,
+        async () => await page.mouse.wheel({ deltaY: 250 }),
+        "scroll into memories",
+      ],
+      [
+        800,
+        async () => await page.mouse.wheel({ deltaY: 250 }),
+        "scroll more — see flow arrows",
+      ],
+
+      // Expand a card to show the diff
+      [
+        700,
         async () => {
           await page.evaluate(() => {
-            const c = document.querySelectorAll(".memory")[2];
-            if (c) c.setAttribute("data-expanded", "true");
+            const cards = document.querySelectorAll(".memory");
+            let target = null;
+            for (const c of cards) {
+              if (
+                c.querySelector(".change-badge .add") &&
+                c.getAttribute("data-weight") !== "trivial"
+              ) {
+                target = c;
+                break;
+              }
+            }
+            if (target) {
+              target.setAttribute("data-expanded", "true");
+              target.scrollIntoView({ block: "center" });
+            }
           });
         },
-        "expand card",
+        "expand a card — show diff",
       ],
-      [1400, null, "linger on diff"],
+      [1600, null, "linger on the diff"],
+
+      // Reset for graph view
       [
         400,
         async () => {
           await page.evaluate(() => {
-            window.scrollTo({ top: 0 });
             document
               .querySelectorAll('[data-expanded="true"]')
               .forEach((e) => e.setAttribute("data-expanded", "false"));
+            window.scrollTo({ top: 0 });
           });
         },
         "reset",
       ],
-      [400, async () => await page.keyboard.press("g"), "switch to graph"],
-      [1800, null, "linger on graph"],
-      [400, async () => await page.keyboard.press("s"), "switch to summary"],
-      [1800, null, "linger on summary"],
+
+      // Switch to graph view via clicking the new switcher button
       [
-        600,
-        async () => await page.mouse.wheel({ deltaY: 300 }),
-        "scroll summary",
+        400,
+        async () => {
+          await page.evaluate(() => {
+            document
+              .querySelector('.view-switch button[data-view="graph"]')
+              .click();
+          });
+        },
+        "click Graph in view switcher",
       ],
-      [1400, null, "linger on summary scrolled"],
-      [400, async () => await page.keyboard.press("r"), "back to river"],
+      [1800, null, "linger on constellation graph"],
+
+      // Switch to summary via switcher
+      [
+        400,
+        async () => {
+          await page.evaluate(() => {
+            document
+              .querySelector('.view-switch button[data-view="summary"]')
+              .click();
+          });
+        },
+        "click Summary in view switcher",
+      ],
+      [1600, null, "linger on hero + stats (count-up animation)"],
+
+      // Scroll the summary to expose keyword cloud + sankey
+      [
+        700,
+        async () => await page.mouse.wheel({ deltaY: 500 }),
+        "scroll to keyword cloud",
+      ],
+      [1400, null, "linger on cloud"],
+      [
+        700,
+        async () => await page.mouse.wheel({ deltaY: 500 }),
+        "scroll to sankey + tier costs",
+      ],
+      [1400, null, "linger on sankey"],
+
+      // Toggle paper theme
+      [400, async () => await page.keyboard.press("t"), "toggle paper theme"],
+      [1400, null, "linger in paper theme"],
+
+      // Back to dark, back to river
+      [400, async () => await page.keyboard.press("t"), "back to dark theme"],
+      [
+        400,
+        async () => {
+          await page.evaluate(() => {
+            document
+              .querySelector('.view-switch button[data-view="river"]')
+              .click();
+            window.scrollTo(0, 0);
+          });
+        },
+        "back to river",
+      ],
+
+      // Show compact mode
+      [
+        400,
+        async () => {
+          await page.evaluate(() => {
+            state.headerFolded = true;
+            applyFold();
+          });
+        },
+        "fold to compact mode",
+      ],
+      [1400, null, "linger in compact mode"],
+
+      // Unfold + finish
+      [
+        400,
+        async () => {
+          await page.evaluate(() => {
+            state.headerFolded = false;
+            applyFold();
+          });
+        },
+        "unfold",
+      ],
       [800, null, "finish"],
     ];
 
     for (const [duration, action, label] of SCRIPT) {
-      console.log(`  • ${label}`);
-      if (action) await action();
-      const frames = Math.max(1, Math.round(duration / INTERVAL_MS));
-      for (let i = 0; i < frames; i++) {
-        await captureFrame(page, frameIdx++);
-        await settle(page, INTERVAL_MS - 30); // overhead budget
-      }
+      await recordFor(duration, action, label);
     }
     console.log(`Captured ${frameIdx} frames`);
 
-    // === Assemble GIF via ffmpeg ===
-    console.log("\nAssembling GIF via ffmpeg…");
+    // ----------------------------------------------------------------
+    // GIF assembly via ffmpeg (palette pipeline)
+    // ----------------------------------------------------------------
+    console.log("\n=== Assembling GIF via ffmpeg ===");
     const gifOut = path.join(OUT, "demo.gif");
     const palettePath = path.join(FRAMES, "_palette.png");
 
@@ -226,12 +423,10 @@ async function main() {
     if (gif.status !== 0) throw new Error("ffmpeg gif assemble failed");
 
     console.log(
-      `\n✓ Wrote ${gifOut} (${(fs.statSync(gifOut).size / 1024 / 1024).toFixed(1)} MB)`,
+      `\n✓ ${gifOut} (${(fs.statSync(gifOut).size / 1024 / 1024).toFixed(1)} MB)`,
     );
-
-    // Cleanup intermediate frames
     rmrf(FRAMES);
-    console.log("Cleaned up frames.");
+    console.log("✓ Cleaned up frames.");
   } finally {
     await browser.close();
   }
