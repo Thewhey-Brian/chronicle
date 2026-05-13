@@ -1,0 +1,7 @@
+# Files we don't want shipped to npm even if `files` glob would catch them.
+.chronicle/
+/chronicle.html
+*.tgz
+.github/
+.gitignore
+debug-*.js

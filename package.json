@@ -1,0 +1,54 @@
+{
+  "name": "chronicle-cli",
+  "version": "0.1.0",
+  "description": "Living HTML companion for AI coding sessions. Turns Claude Code / Codex transcripts into a beautiful, real-time, LLM-authored project history.",
+  "type": "module",
+  "bin": {
+    "chronicle": "./bin/chronicle.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "web/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/chronicle.js serve",
+    "index": "node bin/chronicle.js index",
+    "distill": "node bin/chronicle.js distill",
+    "narrate": "node bin/chronicle.js narrate",
+    "wrap": "node bin/chronicle.js wrap",
+    "smoke": "node bin/chronicle.js status && node bin/chronicle.js memories",
+    "prepublishOnly": "chmod +x bin/chronicle.js"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "codex",
+    "ai",
+    "agents",
+    "developer-tools",
+    "memory",
+    "visualization",
+    "dashboard",
+    "html",
+    "session-history"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Xinyu Guo",
+    "url": "https://github.com/Thewhey-Brian"
+  },
+  "homepage": "https://github.com/Thewhey-Brian/chronicle#readme",
+  "bugs": {
+    "url": "https://github.com/Thewhey-Brian/chronicle/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Thewhey-Brian/chronicle.git"
+  }
+}

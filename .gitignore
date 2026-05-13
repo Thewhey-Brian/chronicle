@@ -1,0 +1,21 @@
+node_modules/
+npm-debug.log*
+.DS_Store
+.env
+.env.*
+*.log
+
+# Chronicle's own per-project artifacts (we use Chronicle on Chronicle).
+# Exclude the data dir AND the exported standalone snapshot so we don't
+# accidentally commit demo data into the repo.
+.chronicle/
+/chronicle.html
+
+# Editor cruft
+.vscode/
+.idea/
+*.swp
+.history/
+
+# npm pack output
+*.tgz
