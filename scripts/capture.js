@@ -213,6 +213,20 @@ async function main() {
     fs.mkdirSync(FRAMES, { recursive: true });
     await reset(page);
 
+    // Belt-and-braces: hard-hide the help overlay so it cannot leak into any
+    // frame. We restore the original CSS rule when the script exits — but the
+    // browser is closed after capture anyway, so this is permanent for this run.
+    await page.evaluate(() => {
+      const el = document.getElementById("help-overlay");
+      if (el) {
+        el.setAttribute("data-open", "false");
+        el.style.display = "none"; // hard override regardless of any data-* state
+      }
+      // Also nuke the global toggle so an accidental key press is a no-op
+      window.toggleHelp = () => {};
+    });
+    await settle(page, 200);
+
     const FPS = 6;
     const INTERVAL_MS = Math.round(1000 / FPS);
     let frameIdx = 0;
