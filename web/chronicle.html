@@ -124,8 +124,34 @@ a { color: var(--accent); text-decoration: none; }
   content: '·'; padding: 0 8px; color: var(--fg-dim);
 }
 .heartbeat .controls {
-  display: flex; gap: 6px;
+  display: flex; gap: 6px; align-items: center;
 }
+/* Segmented view switcher: River / Graph / Summary */
+.view-switch {
+  display: inline-flex; gap: 0;
+  background: var(--bg-elev); border: 1px solid var(--line);
+  border-radius: 999px; padding: 2px;
+  margin-right: 4px;
+}
+.view-switch button {
+  background: transparent; border: 0; color: var(--fg-mute);
+  font: inherit; font-size: 11.5px; font-weight: 500;
+  padding: 5px 12px; border-radius: 999px;
+  cursor: pointer; transition: background .15s ease, color .15s ease;
+  letter-spacing: .02em; min-width: auto; height: auto;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.view-switch button svg {
+  width: 12px; height: 12px; stroke: currentColor;
+  stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round;
+}
+.view-switch button:hover { color: var(--fg); }
+.view-switch button[data-active="true"] {
+  background: var(--bg); color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+.heartbeat[data-folded="true"] .view-switch button { padding: 3px 9px; font-size: 10.5px; }
+.heartbeat[data-folded="true"] .view-switch button svg { display: none; }
 .heartbeat button, .filter-bar button, .filter-bar .chip {
   background: transparent; border: 1px solid var(--line); color: var(--fg-mute);
   font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 999px;
@@ -1277,8 +1303,20 @@ a { color: var(--accent); text-decoration: none; }
     <span class="cost" id="mini-cost">$0.00</span>
   </span>
   <div class="controls">
-    <button id="btn-summary" title="Project summary view (S)">▣</button>
-    <button id="btn-view" title="Toggle view: river / graph (G)">⊕</button>
+    <div class="view-switch" role="tablist" aria-label="View">
+      <button data-view="river" title="River — chronological memory cards (R)">
+        <svg viewBox="0 0 16 16"><path d="M3 4 H13 M3 8 H13 M3 12 H13"/></svg>
+        River
+      </button>
+      <button data-view="graph" title="Graph — constellation by time and tag (G)">
+        <svg viewBox="0 0 16 16"><circle cx="4" cy="4" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><path d="M4 4 L12 6 M12 6 L6 12 M6 12 L12 12"/></svg>
+        Graph
+      </button>
+      <button data-view="summary" title="Summary — project dashboard (S)">
+        <svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+        Summary
+      </button>
+    </div>
     <button id="btn-theme" title="Toggle theme (T)">◐</button>
     <button id="btn-help" title="Keyboard shortcuts (?)">?</button>
     <button id="btn-fold" title="Fold / unfold header">▴</button>
@@ -1358,9 +1396,9 @@ a { color: var(--accent); text-decoration: none; }
     <h3>Keyboard shortcuts</h3>
     <dl>
       <dt>/</dt><dd>Focus search</dd>
-      <dt>R</dt><dd>River view (default)</dd>
-      <dt>G</dt><dd>Constellation graph view</dd>
-      <dt>S</dt><dd>Project summary view</dd>
+      <dt>R</dt><dd>River view (or click the segmented switcher in the header)</dd>
+      <dt>G</dt><dd>Graph view (constellation by time × tag)</dd>
+      <dt>S</dt><dd>Summary view (project dashboard)</dd>
       <dt>T</dt><dd>Toggle theme (dark / paper)</dd>
       <dt>?</dt><dd>Show this help</dd>
       <dt>Esc</dt><dd>Close expanded cards or this overlay</dd>
@@ -2150,6 +2188,10 @@ function setView(v) {
   // Filter bar only useful in river/graph
   document.querySelector(".filter-bar").style.display =
     v === "summary" ? "none" : "";
+  // Sync segmented switcher's active state
+  document.querySelectorAll(".view-switch button").forEach((b) =>
+    b.setAttribute("data-active", String(b.getAttribute("data-view") === v))
+  );
   if (v === "graph") renderGraph();
   else if (v === "summary") renderSummary();
   else render();
@@ -3164,15 +3206,18 @@ document.getElementById("btn-theme").onclick = () => {
   applyTheme();
 };
 document.getElementById("btn-help").onclick = () => toggleHelp(true);
-document.getElementById("btn-view").onclick = () =>
-  setView(state.view === "river" ? "graph" : "river");
-document.getElementById("btn-summary").onclick = () =>
-  setView(state.view === "summary" ? "river" : "summary");
+document.querySelectorAll(".view-switch button").forEach((btn) => {
+  btn.addEventListener("click", () => setView(btn.getAttribute("data-view")));
+});
 document.getElementById("btn-fold").onclick = () => {
   state.headerFolded = !state.headerFolded;
   applyFold();
 };
 applyFold();
+// Initialize segmented switcher active state on first load
+document.querySelectorAll(".view-switch button").forEach((b) =>
+  b.setAttribute("data-active", String(b.getAttribute("data-view") === state.view))
+);
 
 // Git tree controls
 document.querySelectorAll(".gt-controls .seg button").forEach((btn) => {
