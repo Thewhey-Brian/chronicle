@@ -12,7 +12,9 @@ npx chronicle-cli serve
 
 That's it. Three commands and Chronicle is observing your project.
 
-![Chronicle river view](assets/screenshots/river.png)
+![Chronicle demo — river → graph → summary](assets/screenshots/demo.gif)
+
+> The screenshots and demo above were captured from Chronicle observing **its own development session** — every memory you see is a real turn from building this tool.
 
 ---
 
@@ -194,6 +196,16 @@ Built with the help of the very tool it produces. The `chronicle.html` of buildi
 ## Contributing
 
 Issues and PRs welcome. The codebase is intentionally small (~3K lines), framework-free on the frontend, and easy to fork. Start at `bin/chronicle.js` for the CLI shape and `web/chronicle.html` for the dashboard.
+
+### Regenerating the README screenshots & demo
+
+```bash
+npm install                       # gets puppeteer (dev only)
+node bin/chronicle.js export      # refresh chronicle.html with current data
+node scripts/capture.js           # runs headless Chrome + ffmpeg → assets/screenshots/
+```
+
+The capture script cycles through River → expanded-diff → Graph → Summary, snaps PNGs at 2× density, and assembles a 6 fps GIF via ffmpeg's palette-aware pipeline.
 
 ## License
 
