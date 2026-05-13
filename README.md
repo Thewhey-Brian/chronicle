@@ -12,6 +12,8 @@ npx chronicle-cli serve
 
 That's it. Three commands and Chronicle is observing your project.
 
+![Chronicle river view](assets/screenshots/river.png)
+
 ---
 
 ## Why
@@ -53,9 +55,21 @@ npx chronicle-cli export         # produces chronicle.html (single file)
 ## What you get
 
 - **River view** — vertical scroll of memory cards, newest at top. Each card shows the prompt's intent, the impact (what changed), a GitHub-style diff, tag chips, and a tiny PROMPT → TOOLS → FILES → IMPACT flow diagram.
+
+  ![Memory card with diff](assets/screenshots/diff.png)
+
 - **Sticky git tree** — horizontal session timeline with keyword labels on major moments, color-coded by tag, pivots drawn as forked arcs.
+
+  ![Git tree](assets/screenshots/git-tree.png)
+
 - **Constellation graph** — `G` toggles a 2D plot: time on the y-axis, tag-cluster on the x-axis, edges between memories that share files. Side panel summarizes flow and counts.
+
+  ![Graph view](assets/screenshots/graph.png)
+
 - **Summary view** — `S` opens a hero dashboard: total counts, tag distribution donut, hour-of-day heatmap, top-touched files, cost-by-tier, keyword cloud, full-session timeline ribbon, tag-transition Sankey. Animated. Click anything to drill into the river.
+
+  ![Summary dashboard](assets/screenshots/summary.png)
+
 - **Live cost ledger** — every LLM call Chronicle makes is logged. Footer shows live `$0.0XXX · N calls · M tokens`.
 
 ---
