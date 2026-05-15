@@ -4,17 +4,11 @@
 
 Chronicle watches your Claude Code (or Codex) transcripts and renders your project's evolution as a real-time, LLM-authored dashboard — a clean, interactive HTML artifact you can read live, share as a single file, or keep open on a second monitor.
 
-```
-npx chronicle-cli init
-npx chronicle-cli serve
-# → http://127.0.0.1:7890
-```
-
-That's it. Three commands and Chronicle is observing your project.
-
 ![Chronicle demo — river → graph → summary](assets/screenshots/demo.gif)
 
 > The screenshots and demo above were captured from Chronicle observing **its own development session** — every memory you see is a real turn from building this tool.
+
+**Get going in ~10 minutes** → jump to [First-time setup](#first-time-setup).
 
 ---
 
@@ -28,29 +22,81 @@ It's one self-contained HTML file. No build step. No framework lock-in. Works of
 
 ---
 
-## Quickstart
+## First-time setup
 
-### Prerequisites
-- Node ≥ 20
-- One of:
-  - The `claude` CLI on your `PATH` (Chronicle reuses your Claude Code auth — preferred), or
-  - `ANTHROPIC_API_KEY` in your environment
+**Total time: ~10 minutes from "never heard of it" to a shareable HTML.**
 
-### Three commands
+### 1 · Prerequisites (one-time)
+
+Two things need to be installed:
+
+**a. Node.js 20 or higher** — the runtime Chronicle is built on.
+
+| Platform | Command |
+|---|---|
+| macOS (Homebrew) | `brew install node` |
+| macOS / Linux (any) | `curl -fsSL https://fnm.vercel.app/install \| bash && fnm install --lts` |
+| Windows | Download the LTS installer from <https://nodejs.org/> |
+
+Verify: `node --version` should print `v20.x.x` or higher.
+
+**b. An LLM connection** — Chronicle calls Anthropic during distillation. Pick one:
+
+| Option | How |
+|---|---|
+| **Reuse Claude Code's auth** *(preferred)* | If you already use Claude Code, you're done — Chronicle reuses your existing `claude` CLI login. |
+| **Install `claude` CLI fresh** | `npm install -g @anthropic-ai/claude-code` then `claude /login` (opens a browser OAuth flow). |
+| **API key only** | `export ANTHROPIC_API_KEY=sk-ant-…` in your shell (no Claude Code required). |
+
+### 2 · Install Chronicle
+
+> Currently the only install path is from GitHub. After `npm publish` lands, `npx chronicle-cli` will work without any clone — until then, this is the path.
 
 ```bash
-cd your-project/
-npx chronicle-cli init           # installs the Claude Code hook
-npx chronicle-cli serve          # opens http://127.0.0.1:7890
+git clone https://github.com/Thewhey-Brian/chronicle.git
+cd chronicle
+npm install         # only puppeteer (used for screenshot regeneration); Chronicle itself has zero runtime deps
+npm link            # makes the `chronicle` command available globally
 ```
 
-After `init`, every future Claude Code turn auto-distills in the background. The HTML updates live over SSE.
+Verify: `chronicle help` should print the command list.
 
-To bake a shareable snapshot:
+### 3 · Run Chronicle on your own project
+
+Open a terminal in *your* project — the one where you've been using Claude Code:
 
 ```bash
-npx chronicle-cli export         # produces chronicle.html (single file)
+cd ~/projects/your-project/
+
+chronicle init        # installs the Stop hook and writes default config
+chronicle index       # parses existing transcripts ($0 — no LLM)
+chronicle distill -v  # distills each turn into a memory record (~$0.001/turn)
+chronicle narrate     # optional — Sonnet writes narrative chapters (~$0.02)
+chronicle wrap        # optional — Opus writes a session hero card (~$0.10)
+chronicle serve       # opens http://127.0.0.1:7890 in your browser
 ```
+
+The dashboard is now live. Memories, git tree, color legend, summary, cost ledger — all visible.
+
+> **From the next Claude Code turn onward, distillation runs automatically in the background via the Stop hook.** The HTML updates live over SSE. You never have to run anything again unless you want a wrap card or a fresh export.
+
+### 4 · Share the result
+
+```bash
+chronicle export      # writes ./chronicle.html (~300 KB)
+```
+
+That single file is **everything**: code, data, narrative, wrap card — all inlined. Works offline. Open in any browser by double-clicking. Email it, drop it in Slack, commit it to the repo, attach to a PR description, post to a static host — zero dependencies on the receiving end.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `No transcripts found` | You haven't run a Claude Code session in this directory yet. Have at least one session, then re-run `chronicle index`. |
+| `Not logged in · Please run /login` | Either run `claude /login`, or `export ANTHROPIC_API_KEY=…`. Chronicle auto-falls-back to the env var. |
+| Distill produces "Brief exchange" titles | The turn had no tool calls and the prompt was <60 chars — Chronicle skipped the LLM. Run a real coding turn and rerun. |
+| Hook keeps firing while you're away | `chronicle uninstall` removes the Stop hook. `init` re-adds it later. |
+| Cost seems high | Check `chronicle usage`. The hard cap is `max_per_session_usd` in `.chronicle/config.json` (default `$0.50`). |
 
 ---
 
