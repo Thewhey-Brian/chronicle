@@ -61,28 +61,44 @@ async function main() {
       }
       const onlyLatest = hasFlag("--turn-latest");
       const verbose = hasFlag("-v") || hasFlag("--verbose");
+      const retryFailed = hasFlag("--retry-failed");
       // Process the most recently modified transcript first (current session).
       transcripts.sort(
         (a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs,
       );
       let totalWritten = 0;
+      let totalSkipped = 0;
+      let totalFailed = 0;
+      const allFailedIds = new Set();
       const targets = onlyLatest ? transcripts.slice(0, 1) : transcripts;
       for (const tPath of targets) {
         if (verbose) console.error(`distilling ${path.basename(tPath)}`);
         const r = await distillProject(projectDir, tPath, {
           onlyLatest,
           verbose,
+          retryFailed,
           adapter: ad,
         });
         totalWritten += r.written;
+        totalSkipped += r.skipped || 0;
+        totalFailed += r.failed || 0;
+        for (const id of r.failed_turn_ids || []) allFailedIds.add(id);
       }
       const usage = usageSummary(projectDir);
       console.log(
         JSON.stringify(
           {
             written: totalWritten,
+            skipped_prior_failures: totalSkipped,
+            failed_this_run: totalFailed,
+            tracked_failures: allFailedIds.size,
             cumulativeCalls: usage.calls,
             cumulativeCostUsd: +usage.cost.toFixed(4),
+            ...(allFailedIds.size
+              ? {
+                  hint: "Use `chronicle distill --retry-failed` to retry failed turns; see .chronicle/failed_turns.json for details.",
+                }
+              : {}),
           },
           null,
           2,
@@ -235,6 +251,7 @@ Commands:
   chronicle index            Build .chronicle/index.jsonl from transcripts
   chronicle distill [opts]   Distill turns into memory records (Tier A)
     --turn-latest              Only distill the most recent turn (hook mode)
+    --retry-failed             Retry turns previously recorded in .chronicle/failed_turns.json
     -v / --verbose             Print progress
   chronicle narrate [opts]   Generate Tier B narrative CML chapters (Sonnet)
     --chunk <n>                Memories per chapter (default 8)

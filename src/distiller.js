@@ -248,10 +248,29 @@ function collectTools(turn) {
   return [...s];
 }
 
+// Sidecar tracking turns that failed during distillation so subsequent runs
+// skip them (unless --retry-failed is passed). Shape:
+//   { failures: { [turnId]: { ts, error, attempts } } }
+function failedPath(projectDir) {
+  return path.join(chronicleDir(projectDir), "failed_turns.json");
+}
+function readFailed(projectDir) {
+  const p = failedPath(projectDir);
+  if (!fs.existsSync(p)) return { failures: {} };
+  try {
+    return JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch {
+    return { failures: {} };
+  }
+}
+function writeFailed(projectDir, data) {
+  fs.writeFileSync(failedPath(projectDir), JSON.stringify(data, null, 2));
+}
+
 export async function distillProject(
   projectDir,
   transcriptPath,
-  { onlyLatest = false, verbose = false, adapter } = {},
+  { onlyLatest = false, verbose = false, adapter, retryFailed = false } = {},
 ) {
   const ad = adapter || getAdapter("auto", projectDir);
   ensureChronicleDir(projectDir);
@@ -265,18 +284,57 @@ export async function distillProject(
       } catch {}
     }
   }
+  const failedData = readFailed(projectDir);
+  if (retryFailed) failedData.failures = {};
   const out = fs.createWriteStream(memPath, { flags: "a" });
   const turns = [];
   for await (const turn of ad.readTurns(transcriptPath)) turns.push(turn);
   const targets = onlyLatest ? turns.slice(-1) : turns;
   let written = 0;
+  let skipped = 0;
+  let failed = 0;
   for (const turn of targets) {
     if (existing.has(turn.turnId)) continue;
-    const mem = await distillTurn(turn, { projectDir });
-    out.write(JSON.stringify(mem) + "\n");
-    written++;
-    if (verbose) console.error(`  ${mem.id} · ${mem.title}`);
+    if (failedData.failures[turn.turnId] && !retryFailed) {
+      skipped++;
+      if (verbose)
+        console.error(
+          `  ↷ skipping previously-failed turn ${turn.turnId?.slice(0, 8)} (use --retry-failed to retry)`,
+        );
+      continue;
+    }
+    try {
+      const mem = await distillTurn(turn, { projectDir });
+      out.write(JSON.stringify(mem) + "\n");
+      written++;
+      if (verbose) console.error(`  ${mem.id} · ${mem.title}`);
+      // Clear any prior failure record on success
+      if (failedData.failures[turn.turnId]) {
+        delete failedData.failures[turn.turnId];
+        writeFailed(projectDir, failedData);
+      }
+    } catch (e) {
+      failed++;
+      const prior = failedData.failures[turn.turnId];
+      failedData.failures[turn.turnId] = {
+        ts: new Date().toISOString(),
+        error: (e?.message || String(e)).slice(0, 500),
+        attempts: (prior?.attempts || 0) + 1,
+      };
+      writeFailed(projectDir, failedData);
+      if (verbose)
+        console.error(
+          `  ✗ ${turn.turnId?.slice(0, 8)} failed (continuing): ${(e?.message || e).toString().slice(0, 180)}`,
+        );
+      // Continue to next turn — do not poison the rest of the run.
+    }
   }
   await new Promise((r) => out.end(r));
-  return { written, totalTurns: turns.length };
+  return {
+    written,
+    skipped,
+    failed,
+    totalTurns: turns.length,
+    failed_turn_ids: Object.keys(failedData.failures),
+  };
 }

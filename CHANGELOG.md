@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-05-18
+
+### Fixed
+- `chronicle distill` no longer halts the whole run on a single failing
+  turn. Each per-turn LLM call is now wrapped in try/catch; failures are
+  recorded to `.chronicle/failed_turns.json` and the loop continues with
+  the next turn. Subsequent runs skip recorded failures unless
+  `--retry-failed` is passed. Reported by Brian Guo — 13-of-28 turns
+  were getting stranded.
+- `claude` CLI failures with empty stderr now surface stdout (the JSON
+  envelope with `is_error`, `subtype`, and `api_error_status`) in the
+  error message, so the diagnostic is actually visible.
+- Exit-0 responses with `is_error: true` are now treated as failures
+  rather than producing empty memories.
+
+### Added
+- `chronicle distill --retry-failed` re-attempts turns recorded in
+  `.chronicle/failed_turns.json`.
+- `chronicle distill` JSON output now reports `skipped_prior_failures`,
+  `failed_this_run`, and `tracked_failures` counts.
+
 ## [0.1.0] — 2026-05-13
 
 Initial public release.

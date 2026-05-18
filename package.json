@@ -1,6 +1,6 @@
 {
   "name": "chronicle-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Living HTML companion for AI coding sessions. Turns Claude Code / Codex transcripts into a beautiful, real-time, LLM-authored project history.",
   "type": "module",
   "bin": {

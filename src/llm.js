@@ -101,13 +101,45 @@ async function viaCli({ system, user, schema, model, maxBudgetUsd }) {
     child.stderr.on("data", (d) => (stderr += d));
     child.on("error", reject);
     child.on("exit", (code) => {
+      // Helper that produces the most informative blurb available.
+      // claude -p sometimes writes structured error JSON to stdout
+      // (is_error:true) AND exits non-zero, AND emits nothing on stderr.
+      // The previous code only looked at stderr, so every such failure
+      // turned into the unhelpful "claude CLI exit 1: " with empty tail.
+      function detailBlurb() {
+        const head = (s) => (s || "").trim().slice(0, 800);
+        if (stderr.trim()) return head(stderr);
+        if (!stdout.trim()) return "(no output — process exited silently)";
+        try {
+          const j = JSON.parse(stdout);
+          const subtype = j.subtype ? ` subtype=${j.subtype}` : "";
+          const apiErr = j.api_error_status
+            ? ` api_status=${j.api_error_status}`
+            : "";
+          const resultText =
+            typeof j.result === "string" ? j.result.slice(0, 400) : "";
+          return `is_error=${!!j.is_error}${subtype}${apiErr} · ${resultText}`;
+        } catch {
+          return head(stdout);
+        }
+      }
       if (code !== 0) {
-        return reject(
-          new Error(`claude CLI exit ${code}: ${stderr.slice(0, 500)}`),
-        );
+        return reject(new Error(`claude CLI exit ${code}: ${detailBlurb()}`));
       }
       try {
         const j = JSON.parse(stdout);
+        // Even on exit 0 the CLI can return is_error=true with the failure
+        // packed inside the JSON envelope. Bubble these up too — they used
+        // to silently produce empty memories.
+        if (j.is_error) {
+          return reject(
+            new Error(
+              `claude CLI returned is_error=true: ${
+                j.subtype || j.api_error_status || j.result || "(no detail)"
+              }`,
+            ),
+          );
+        }
         // claude -p --output-format json shape: { result, usage: { input_tokens, ... }, total_cost_usd, ... }
         const text = j.result ?? "";
         const usage = j.usage || {};
